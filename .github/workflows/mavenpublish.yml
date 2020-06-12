@@ -29,13 +29,13 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.PACKAGES }}
 
     - run: |
-      ( jdk/bin/java -Zcheckpoint:cr -jar target/example-quarkus-1.0-SNAPSHOT-runner.jar
-        echo $? > exitcode
-      ) &
-      sleep 10 # allow service to start
-      curl localhost:8080/hello # "warmup" the service
-      jcmd target/example-quarkus-1.0-SNAPSHOT-runner.jar JDK.checkpoint
-      sleep 10 # allow checkpoint to settle
-      [ 137 = $(< exitcode) ]
+        ( jdk/bin/java -Zcheckpoint:cr -jar target/example-quarkus-1.0-SNAPSHOT-runner.jar
+          echo $? > exitcode
+        ) &
+        sleep 10 # allow service to start
+        curl localhost:8080/hello # "warmup" the service
+        jcmd target/example-quarkus-1.0-SNAPSHOT-runner.jar JDK.checkpoint
+        sleep 10 # allow checkpoint to settle
+        [ 137 = $(< exitcode) ]
     - run: timeout 10 jdk/bin/java -Zrestore:cr || [ $? = 124 ]
 
