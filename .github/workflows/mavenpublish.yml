@@ -28,6 +28,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.PACKAGES }}
 
+    - name: Test on Vanila JDK
+      run: |
+        java -showversion -jar target/example-quarkus-1.0-SNAPSHOT-runner.jar  &
+        sleep 10
+        curl localhost:8080/hello | grep "hello"
+        pkill -f target/example-quarkus-1.0-SNAPSHOT-runner.jar
+
     - name: Download JDK
       run: |
         id=$(curl -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/org-crac/jdk/releases/tags/release-crac | jq '.assets[] | select(.name == "jdk.tar.gz").id')
@@ -43,5 +50,7 @@ jobs:
         jcmd target/example-quarkus-1.0-SNAPSHOT-runner.jar JDK.checkpoint
         sleep 10 # allow checkpoint to settle
         [ 137 = $(< exitcode) ]
-    - run: timeout 10 jdk/bin/java -Zrestore:cr || [ $? = 124 ]
-
+    - run: |
+        jdk/bin/java -Zrestore:cr &
+        sleep 3
+        curl localhost:8080/hello | grep "hello"
