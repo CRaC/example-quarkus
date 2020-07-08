@@ -68,7 +68,7 @@ jobs:
           -jar target/example-quarkus-1.0-SNAPSHOT-runner.jar)
 
         # warmup the service
-        siege -b -c 1 -r 100000 http://localhost:8080/hello > /dev/null
+        utils/bench.sh http://localhost:8080/hello
         jcmd $P JDK.checkpoint
         [ 137 = $(utils/read-exitcode.sh exitcode) ]
 
