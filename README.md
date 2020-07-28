@@ -1,30 +1,38 @@
 # example-quarkus project
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+## Building
 
-If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
-
-## Running the application in dev mode
-
-You can run your application in dev mode that enables live coding using:
+1. Create once a [Personal Access Token (PAK)](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token) with [packages scope](https://docs.github.com/en/packages/publishing-and-managing-packages/about-github-packages#about-tokens).
+2. Provide the PAK in the environment
 ```
-./mvnw quarkus:dev
+export GITHUB_ACTOR=YOUR_USERNAME
+export GITHUB_TOKEN=YOUR_PAK
+```
+3. Use maven to build
+```
+mvn -s settings.xml package
 ```
 
-## Packaging and running the application
+## Running
 
-The application can be packaged using `./mvnw package`.
-It produces the `example-quarkus-1.0-SNAPSHOT-runner.jar` file in the `/target` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/lib` directory.
+Please refer to [README](https://github.com/org-crac/docs#users-flow) for details.
 
-The application is now runnable using `java -jar target/example-quarkus-1.0-SNAPSHOT-runner.jar`.
+### Preparing the image
+1. Run the [JDK](README.md#JDK) in the checkpoint mode
+```
+$JAVA_HOME/bin/java -Zcheckpoint:cr -jar target/example-quarkus-1.0-SNAPSHOT-runner.jar
+```
+2. Warm-up the instance
+```
+siege -c 1 -r 100000 -b http://localhost:8080/hello
+```
+3. Request checkpoint
+```
+jcmd target/example-quarkus-1.0-SNAPSHOT-runner.jar JDK.checkpoint
+```
 
-## Creating a native executable
+### Restoring
 
-You can create a native executable using: `./mvnw package -Pnative`.
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using: `./mvnw package -Pnative -Dquarkus.native.container-build=true`.
-
-You can then execute your native executable with: `./target/example-quarkus-1.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult https://quarkus.io/guides/building-native-image.
+```
+$JAVA_HOME/bin/java -Zrestore:cr
+```
