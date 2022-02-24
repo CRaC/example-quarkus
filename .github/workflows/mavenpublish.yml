@@ -3,8 +3,7 @@ name: Maven Package
 
 on:
   push:
-  schedule:
-    - cron: '0 0 * * *'
+    - branch: '*'
 
 jobs:
   build:
