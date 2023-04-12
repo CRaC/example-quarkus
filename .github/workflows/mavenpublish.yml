@@ -3,8 +3,7 @@ name: Maven Package
 
 on:
   push:
-  schedule:
-    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,26 +17,29 @@ jobs:
         apt-get -y --no-install-recommends install
           siege
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Checkout utils
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: CRaC/utils
         path: utils
 
-    - name: Set up JDK 1.8
-      uses: actions/setup-java@v1
+    - run: make -C utils
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
       with:
-        java-version: 1.8
-    - uses: actions/cache@v2
+        java-version: 17
+        distribution: zulu
+    - uses: actions/cache@v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
         restore-keys: |
           ${{ runner.os }}-maven-:  
 
-    - run: mvn -B package -s settings.xml -DskipTests
+    - run: mvn -B package -DskipTests
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -45,27 +47,28 @@ jobs:
       run: |
         P=$(utils/start-bg.sh \
           -s "Installed features" \
-          java -jar target/example-quarkus-1.0-SNAPSHOT-runner.jar)
+          java -jar target/quarkus-app/quarkus-run.jar)
         curl localhost:8080/hello | grep "hello"
         utils/bench.sh http://localhost:8080/hello
         kill $P
 
     - name: Download JDK
       run: |
-        utils/download-jdk.sh
-        sudo tar -axf jdk14-crac.tar.gz
+        archive=$(utils/download-jdk.sh)
+        sudo tar -axf $archive
+        echo JDK=${archive%%.tar.gz} >> $GITHUB_ENV
 
     - name: Prepare warm checkpoint
       run: |
         P=$(utils/start-bg.sh \
         -s "Installed features" \
         -e exitcode \
-          jdk14-crac/bin/java \
+          ${{ env.JDK }}/bin/java \
           -XX:CRaCCheckpointTo=cr \
           -XX:+UnlockDiagnosticVMOptions \
           -XX:+CRTraceStartupTime \
           -Djdk.crac.trace-startup-time=true \
-          -jar target/example-quarkus-1.0-SNAPSHOT-runner.jar)
+          -jar target/quarkus-app/quarkus-run.jar)
 
         # warmup the service
         utils/bench.sh http://localhost:8080/hello
@@ -76,12 +79,12 @@ jobs:
       run: |
         P=$(utils/start-bg.sh \
           -s "restore-finish" \
-          jdk14-crac/bin/java -XX:CRaCRestoreFrom=cr)
+          ${{ env.JDK }}/bin/java -XX:CRaCRestoreFrom=cr)
         curl localhost:8080/hello | grep "hello"
         utils/bench.sh http://localhost:8080/hello
         kill $P
 
     - name: Test C/RaC startup time
       run:
-        timeout 3 bash -c "jdk14-crac/lib/javatime ; jdk14-crac/bin/java -XX:CRaCRestoreFrom=cr"
+        timeout 3 bash -c "utils/javatime ; ${{ env.JDK }}/bin/java -XX:CRaCRestoreFrom=cr"
         | utils/sel.awk -v from=prestart -v to=restore-finish
